@@ -83,7 +83,7 @@ print(dfout)
 r=1 if best == 'gt' else 0 
 
 fig = plt.figure(figsize=(15,5))
-gs = gridspec.GridSpec(1, 4, width_ratios=[1, 1, 1, 1], wspace=0.11, hspace=0.0, top=0.90, bottom=0.15, left=0.03, right=0.99) 
+gs = gridspec.GridSpec(1, 5, width_ratios=[1, 1, 1, 1, 1], wspace=0.11, hspace=0.0, top=0.90, bottom=0.15, left=0.03, right=0.99) 
 
 for i, alg in enumerate(algorithms):
 
@@ -99,7 +99,7 @@ for i, alg in enumerate(algorithms):
         ax.set_xticklabels(labels=groups,rotation=45, fontsize=14)
         plt.title(alg, fontsize=18, y=1)
 
-#plt.savefig("boxplots.pdf")
+plt.savefig("boxplots.pdf")
 plt.show()
 
 

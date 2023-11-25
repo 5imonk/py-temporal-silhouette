@@ -5,11 +5,12 @@
 from dependencies import check_pkgs
 check_pkgs()
 
-from DenStream import DenStream
+from DenStream.DenStream import DenStream
 # Repo for DenStream: https://github.com/issamemari/DenStream
 from clusopt_core.cluster import CluStream, Streamkm
 # Repo for CluStream and StreamKM++: https://github.com/giuliano-oliveira/clusopt_core
 from sklearn.cluster import Birch
+from dSalmon import clustering
 
 import cvi
 from TSindex import tempsil
@@ -29,6 +30,7 @@ import ntpath
 from sklearn import metrics
 from scipy.io.arff import loadarff 
 from sklearn.metrics.cluster import adjusted_mutual_info_score
+from sklearn.preprocessing import LabelEncoder
 
 import warnings
 warnings.filterwarnings("ignore", category=DeprecationWarning) 
@@ -37,8 +39,10 @@ warnings.filterwarnings("ignore", category=DeprecationWarning)
 DEFAULT_RUNS = '''
 dataS/base/arff results/ base normal
 dataS/base/arff results/ base-r remove
+dataS/base/arff results/ base-p phase
 dataS/moving/arff results/ mov normal
 dataS/moving/arff results/ mov-r remove
+dataS/moving/arff results/ mov-p phase
 dataS/nonstat/arff results/ nonst normal
 dataS/nonstat/arff results/ nonst-r remove
 dataS/nonstat/arff results/ nonst-p phase
@@ -121,8 +125,9 @@ for idf, filename in enumerate(glob.glob(os.path.join(inpath, '*.arff'))):
     stk = Streamkm(coresetsize=k * 10, length=5000, seed=42)
     den = DenStream(eps=0.2, lambd=0.1, beta=0.2, mu=11)
     bir = Birch(n_clusters=k, threshold=0.5)
+    dsa = clustering.SDOcluststream(k=400, T=500, e=10)
     grt = []
-    algorithms = (("CluStream", cls),("DenStream", den),("BIRCH", bir),("StreamKM", stk),("GT", grt))
+    algorithms = (("SDOstreamc", dsa),("CluStream", cls),("DenStream", den),("BIRCH", bir),("StreamKM", stk),("GT", grt))
 
     old_clusters = []
     for alg_name, alg in algorithms:
@@ -143,11 +148,11 @@ for idf, filename in enumerate(glob.glob(os.path.join(inpath, '*.arff'))):
                     ind = ub.update_cls(clusters, old_clusters)
                     clusters = clusters[ind,:]
                 y[i:(i+blocksize)] = ub.get_label(chunk,clusters)
-                old_clusters = clusters
+                old_clusters = clusters                
 
             elif alg_name == 'BIRCH':
                 alg = alg.partial_fit(chunk)
-                y[i:(i+blocksize)] = alg.predict(chunk)
+                y[i:(i+blocksize)] = alg.predict(chunk)                
 
             elif alg_name == 'StreamKM':
                 alg.partial_fit(chunk)
@@ -157,6 +162,10 @@ for idf, filename in enumerate(glob.glob(os.path.join(inpath, '*.arff'))):
                 clusters, _ = alg.get_final_clusters(k, seed=42)
                 y[i:(i+blocksize)] = ub.get_label(chunk,clusters)
                 old_clusters = clusters
+                
+            elif alg_name == 'SDOstreamc':
+                y[i:(i+blocksize)] = alg.fit_predict(chunk)
+                # print(y[i:(i+blocksize)])
 
             elif alg_name == 'GT':
                 y[i:(i+blocksize)] = labels[i:(i+blocksize)]
@@ -166,6 +175,10 @@ for idf, filename in enumerate(glob.glob(os.path.join(inpath, '*.arff'))):
                 except: # DenStream crashes sometimes when calling DBSCAN with a 1-data-point array
                     y[i:(i+blocksize)] = 0
 
+        if alg_name == 'SDOstreamc':
+            label_encoder = LabelEncoder()
+            y = label_encoder.fit_transform(y)
+
         AMI = adjusted_mutual_info_score(labels, y)
         try: # Traditional validation can fail in cases with only one cluster
             Sil = metrics.silhouette_score(data, y, metric='euclidean')
@@ -173,7 +186,8 @@ for idf, filename in enumerate(glob.glob(os.path.join(inpath, '*.arff'))):
             DB = metrics.davies_bouldin_score(data, y)
         except:
             Sil, CH, DB = 0, 0, np.inf
-
+        
+        
         _,coeff, TS = tempsil(timestamps,data,y,s=100,kn=1000,c=1)
 
         #incremental cvi

@@ -1,0 +1,14 @@
+name: ts
+channels:
+  - defaults
+dependencies:
+  - python=3.7
+  - pip
+  - pandas
+  - numpy
+  - matplotlib
+  - scipy
+  - scikit-learn
+  - seaborn
+  # - glob3
+  # - regex

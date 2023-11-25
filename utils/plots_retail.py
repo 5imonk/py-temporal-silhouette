@@ -19,9 +19,9 @@ dfl = pd.read_csv(labelfile).astype(int)
 
 dfl['values'] = dfd['values']
 dfl['time (day-ID)'] = np.arange(len(dfl))
-algs=['CluStream','DenStream','BIRCH','StreamKM','GT']
+algs=['SDOstreamc','CluStream','DenStream','BIRCH','StreamKM','GT']
 
-fig, ax = plt.subplots(nrows=1, ncols=len(algs), figsize=(16, 4))
+fig, ax = plt.subplots(nrows=1, ncols=len(algs), figsize=(24, 4)) #(16,4)
 
 for i,alg in enumerate(algs):
     g = sns.scatterplot(data=dfl, x="time (day-ID)", y='values', palette='tab10', hue=alg, ax=ax[i], alpha=1, s=5, linewidth=0)
@@ -31,8 +31,16 @@ for i,alg in enumerate(algs):
     ax[i].set_title(alg, fontsize=16, y=1)
     g.set_yticklabels(ylabels)
     if i:
-        g.set(ylabel=None)  
+        g.set(ylabel=None) 
 
-plt.show()
-plt.tight_layout()
-#plt.savefig("plots/retail.pdf", dpi=100, rasterized=True)
+    if alg == 'SDOstreamc':
+        # Remove legend
+        g.get_legend().remove() 
+
+# Add common horizontal legend with smaller fontsize and horizontal orientation
+fig.legend(algs, loc='upper center', bbox_to_anchor=(0.5, -0.1), fancybox=True, shadow=True, ncol=len(algs), fontsize='small', mode='expand')
+
+
+# plt.show()
+# plt.tight_layout()
+plt.savefig("plots/retail.pdf", dpi=100, rasterized=True)

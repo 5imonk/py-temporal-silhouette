@@ -5,11 +5,12 @@
 from dependencies import check_pkgs
 check_pkgs()
 
-from DenStream import DenStream
+from DenStream.DenStream import DenStream
 # Repo for DenStream: https://github.com/issamemari/DenStream
 from clusopt_core.cluster import CluStream, Streamkm
 # Repo for CluStream and StreamKM++: https://github.com/giuliano-oliveira/clusopt_core
 from sklearn.cluster import Birch
+from dSalmon import clustering
 
 import cvi
 from TSindex import tempsil
@@ -30,6 +31,7 @@ from sklearn import metrics
 from scipy.io.arff import loadarff 
 from sklearn.metrics.cluster import adjusted_mutual_info_score
 from sklearn.preprocessing import MinMaxScaler
+from sklearn.preprocessing import LabelEncoder
 
 import warnings
 warnings.filterwarnings("ignore", category=DeprecationWarning) 
@@ -92,15 +94,16 @@ for idf, filename in enumerate(glob.glob(os.path.join(inpath, '*.arff'))):
     stk = Streamkm(coresetsize=k * 5, length=5000, seed=42)
     den = DenStream(eps=0.2, lambd=0.1, beta=0.1, mu=11)
     bir = Birch(n_clusters=k, threshold=0.2)
+    dsa = clustering.SDOcluststream(k=400, T=500, e=10)
     grt = []
     blocksize = 200
 
-    algorithms = (("CluStream", cls),("DenStream", den),("BIRCH", bir),("StreamKM", stk),("GT", grt))
+    algorithms = (("SDOstreamc", dsa),("CluStream", cls),("DenStream", den),("BIRCH", bir),("StreamKM", stk),("GT", grt))
 
     print("Dataset shape:", data.shape)
     print("Blocksize:", blocksize)
 
-    df_algs=['CluStream','DenStream','BIRCH','StreamKM','GT']
+    df_algs=['SDOstreamc','CluStream','DenStream','BIRCH','StreamKM','GT']
     df_labels = pd.DataFrame(columns=df_algs)
 
     old_clusters = []
@@ -134,6 +137,8 @@ for idf, filename in enumerate(glob.glob(os.path.join(inpath, '*.arff'))):
                 clusters, _ = alg.get_final_clusters(k, seed=42)
                 y[i:(i+blocksize)] = ub.get_label(chunk,clusters)
                 old_clusters = clusters
+            elif alg_name == 'SDOstreamc':
+                y[i:(i+blocksize)] = alg.fit_predict(chunk)                
             elif alg_name == 'GT':
                 y[i:(i+blocksize)] = labels[i:(i+blocksize)]
             else:
@@ -142,6 +147,9 @@ for idf, filename in enumerate(glob.glob(os.path.join(inpath, '*.arff'))):
                 except:
                     y[i:(i+blocksize)] = 0
 
+        if alg_name == 'SDOstreamc':
+            label_encoder = LabelEncoder()
+            y = label_encoder.fit_transform(y)
 
         AMI = adjusted_mutual_info_score(labels, y)
         print("AMI",AMI)
